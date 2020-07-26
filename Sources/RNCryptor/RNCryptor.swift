@@ -28,25 +28,11 @@ import Foundation
 import CommonCrypto
 
 
-/// The `RNCryptorType` protocol defines generic API to a mutable,
-/// incremental, password-based encryptor or decryptor. Its generic
-/// usage is as follows:
-///
-///     let cryptor = Encryptor(password: "mypassword")
-///     // or Decryptor()
-///
-///     var result = Data()
-///     for data in datas {
-///         result.appendData(try cryptor.update(data))
-///     }
-///     result.appendData(try cryptor.final())
-///
-///  After calling `finalData()`, the cryptor is no longer valid.
+
 public protocol RNCryptorType {
 
     /// Creates and returns a cryptor.
     ///
-    /// - parameter password: Non-empty password string. This will be interpretted as UTF-8.
     init(password: String)
 
     /// Updates cryptor with data and returns processed data.
@@ -64,12 +50,8 @@ public protocol RNCryptorType {
 }
 
 public extension RNCryptorType {
-    /// Simplified, generic interface to `RNCryptorType`. Takes a data,
-    /// returns a processed data. Generally you should use
-    /// `RNCryptor.encrypt(data:withPassword:)`, or
-    /// `RNCryptor.decrypt(data:withPassword:)` instead, but this is useful
-    /// for code that is neutral on whether it is encrypting or decrypting.
-    ///
+   
+    
     /// - throws: `Error`
     fileprivate func oneshot(data: Data) throws -> Data {
         var result = try update(withData: data)
@@ -83,7 +65,7 @@ public enum RNCryptor {
 
     /// Errors thrown by `RNCryptorType`.
     public enum Error: Int, Swift.Error {
-        /// Ciphertext was corrupt or password was incorrect.
+        
         /// It is not possible to distinguish between these cases in the v3 data format.
         case hmacMismatch = 1
 
@@ -96,17 +78,13 @@ public enum RNCryptor {
         /// Memory allocation failure. This should never happen.
         case memoryFailure
 
-        /// A password-based decryptor was used on a key-based ciphertext, or vice-versa.
         case invalidCredentialType
     }
 
-    /// Encrypt data using password and return encrypted data.
     public static func encrypt(data: Data, withPassword password: String) -> Data {
         return Encryptor(password: password).encrypt(data: data)
     }
 
-    /// Decrypt data using password and return decrypted data. Throws if
-    /// password is incorrect or ciphertext is in the wrong format.
     /// - throws `Error`
     public static func decrypt(data: Data, withPassword password: String) throws -> Data {
         return try Decryptor(password: password).decrypt(data: data)
@@ -132,7 +110,6 @@ public enum RNCryptor {
 
         /// Creates and returns a cryptor.
         ///
-        /// - parameter password: Non-empty password string. This will be interpretted as UTF-8.
         public init(password: String) {
             precondition(password != "")
             encryptor = EncryptorV3(password: password)
@@ -160,7 +137,6 @@ public enum RNCryptor {
         }
     }
 
-    /// Password-based decryptor that can handle any supported format.
     public final class Decryptor : RNCryptorType {
         private var decryptors: [VersionedDecryptorType.Type] = [DecryptorV3.self]
 
@@ -170,14 +146,12 @@ public enum RNCryptor {
 
         /// Creates and returns a cryptor.
         ///
-        /// - parameter password: Non-empty password string. This will be interpretted as UTF-8.
         public init(password: String) {
             assert(password != "")
             self.password = password
         }
 
         /// Decrypt data using password and return decrypted data, invalidating decryptor. Throws if
-        /// password is incorrect or ciphertext is in the wrong format.
         /// - throws `Error`
         public func decrypt(data: Data) throws -> Data {
             return try oneshot(data: data)
@@ -235,10 +209,8 @@ public extension RNCryptor {
         /// Size of PBKDF2 salt
         public static let saltSize = 8
 
-        /// Generate a key from a password and salt
         /// - parameters:
-        ///     - password: Password to convert
-        ///     - salt: Salt. Generally constructed with RNCryptor.randomDataOfLength(FormatV3.saltSize)
+
         /// - returns: Key of length FormatV3.keySize
         public static func makeKey(forPassword password: String, withSalt salt: Data) -> Data {
 
@@ -275,7 +247,6 @@ public extension RNCryptor {
 
     /// Format version 3 encryptor. Use this to ensure a specific format verison
     /// or when using keys (which are inherrently versions-specific). To use
-    /// "the latest encryptor" with a password, use `Encryptor` instead.
     final class EncryptorV3 : RNCryptorType {
         private let engine: Engine
         private let hmac: HMACV3
@@ -283,7 +254,6 @@ public extension RNCryptor {
 
         /// Creates and returns an encryptor.
         ///
-        /// - parameter password: Non-empty password string. This will be interpretted as UTF-8.
         public convenience init(password: String) {
             self.init(
                 password: password,
@@ -292,16 +262,7 @@ public extension RNCryptor {
                 iv: RNCryptor.randomData(ofLength: V3.ivSize))
         }
 
-        /// Creates and returns an encryptor using keys.
-        ///
-        /// - Attention: This method requires some expertise to use correctly.
-        ///              Most users should use `init(password:)` which is simpler
-        ///              to use securely.
-        ///
-        /// Keys should not be generated directly from strings (`.dataUsingEncoding()` or similar).
-        /// Ideally, keys should be random (`Cryptor.randomDataOfLength()` or some other high-quality
-        /// random generator. If keys must be generated from strings, then use `FormatV3.keyForPassword(salt:)`
-        /// with a random salt, or just use password-based encryption (that's what it's for).
+        
         ///
         /// - parameters:
         ///     - encryptionKey: AES-256 key. Must be exactly FormatV3.keySize (kCCKeySizeAES256, 32 bytes)
@@ -402,7 +363,6 @@ public extension RNCryptor {
 
         /// Creates and returns a decryptor.
         ///
-        /// - parameter password: Non-empty password string. This will be interpretted as UTF-8.
         public init(password: String) {
             credential = .password(password)
         }
@@ -418,8 +378,6 @@ public extension RNCryptor {
             credential = .keys(encryptionKey: encryptionKey, hmacKey: hmacKey)
         }
 
-        /// Decrypt data using password and return decrypted data. Throws if
-        /// password is incorrect or ciphertext is in the wrong format.
         /// - throws `Error`
         public func decrypt(data: Data) throws -> Data {
             return try oneshot(data: data)
